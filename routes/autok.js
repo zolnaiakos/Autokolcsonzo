@@ -8,6 +8,12 @@ router.get('/', async(req,res)=>{
 
     const {kategoria} = req.query
 
+     if (kategoria && !['kicsi', 'közép', 'egyterű'].includes(kategoria)) {
+    return res.status(400).json({
+        error: 'Érvénytelen kategória'
+    })
+    }
+
     let sql = `
     SELECT a.id, a.rendszam, a.marka, a.modell, a.kategoria, a.napidij, COUNT(b.id) AS berlesDb
     FROM autok a  
@@ -19,7 +25,7 @@ router.get('/', async(req,res)=>{
    
 
     if(kategoria){
-        sql += ' WHERE kategoria = ?'
+        sql += ' WHERE a.kategoria = ?'
         kateg.push(kategoria)
     }
 
@@ -31,21 +37,15 @@ router.get('/', async(req,res)=>{
 
     const [eredmeny] = await pool.query(sql,kateg)
 
-    if (kategoria && !['kicsi', 'közép', 'egyterű'].includes(kategoria)) {
-    return res.status(400).json({
-        error: 'Érvénytelen kategória'
-    })
-}
-
     res.json(eredmeny)
 })
 
 router.get('/szabad', async(req,res)=>{
 
-    const {tol,ig } = req.query
+    let {tol,ig } = req.query
 
 
-     let sql = `
+    let sql = `
     SELECT a.id, a.rendszam, a.marka, a.modell, a.kategoria, a.napidij, COUNT(b.id) AS berlesDb
     FROM autok a  
     LEFT JOIN berlesek b ON b.auto_id = a.id
@@ -104,7 +104,7 @@ router.get('/:id', async(req,res)=>{
     ORDER BY b.kezdet ASC
 `,[id])
 
-    if (berles.length === 0) {
+    if (autok.length === 0) {
         return res.status(404).json({
             error: "Nem létezik ilyen auto"
         });
@@ -114,14 +114,16 @@ router.get('/:id', async(req,res)=>{
     let osszBevetel = 0
 
     for (const b of berles) {
-        osszBevetel += b.dij
+    b.dij = Number(b.dij)
+    osszBevetel += b.dij
     }
 
     res.json({
-        ...autok[0],
-        berles,
-        osszBevetel
-    })
+    ...autok[0],
+    napidij: Number(autok[0].napidij),
+    berles,
+    osszBevetel
+})
 })
 
 export default router
